@@ -170,16 +170,18 @@ class AmapPlugin(Star):
     # ─── 命令入口 ─────────────────────────────────────────
 
     @filter.command("amap")
-    async def handle_amap(self, event: AstrMessageEvent, raw: str = ""):
+    async def handle_amap(self, event: AstrMessageEvent):
         """高德地图服务"""
-        remainder = (raw or "").strip()
-        # 也尝试从消息文本中提取子命令
-        if not remainder:
-            msg = (event.message_str or "").strip()
-            if msg.lower().startswith("/amap "):
-                remainder = msg[6:].strip()
-            elif msg.lower() == "/amap":
-                remainder = ""
+        # AstrBot @filter.command 会按空格拆分参数，
+        # 所以直接从 message_str 取完整文本，去掉 /amap 前缀
+        msg = (event.message_str or "").strip()
+        # 兼容不同前缀格式: /amap, /amap xxx
+        for prefix in ("/amap ", "/amap"):
+            if msg.lower().startswith(prefix):
+                remainder = msg[len(prefix) :].strip()
+                break
+        else:
+            remainder = ""
 
         parts = remainder.split(None, 1)
         subcommand = parts[0].lower() if parts else ""
