@@ -1,0 +1,19 @@
+{
+  "amap_api_key": {
+    "description": "高德地图 Web 服务 API Key",
+    "type": "string",
+    "hint": "在高德开放平台 console.amap.com 申请的 Web 服务 API Key",
+    "obvious_hint": true
+  },
+  "default_city": {
+    "description": "默认城市（adcode 或城市名）",
+    "type": "string",
+    "default": "110000",
+    "hint": "默认城市的 adcode 编码，如 110000(北京)、310000(上海)、440100(广州)、440300(深圳)"
+  },
+  "default_city_name": {
+    "description": "默认城市名称（用于显示）",
+    "type": "string",
+    "default": "北京"
+  }
+}

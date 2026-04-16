@@ -1,0 +1,13 @@
+name: astrbot_plugin_amap
+display_name: 高德地图
+desc: "高德地图服务：天气查询、公交查询、路线规划、地理编码"
+version: v0.1.0
+author: RoyougiShiki
+repo: https://github.com/RoyougiShiki/astrbot_plugin_amap
+keywords:
+  - amap
+  - 高德
+  - 天气
+  - 公交
+  - 路线
+  - 地图
