@@ -11,6 +11,7 @@
 | `/amap regeo <经度,纬度>` | 逆地理编码 | `/amap regeo 116.397,39.908` |
 | `/amap route <方式> <起点> <终点>` | 路线规划 | `/amap route drive 天安门 故宫` |
 | `/amap bus <线路名> [城市]` | 公交线路查询 | `/amap bus 451路 上海` |
+| `/amap busstop <站名> [城市]` | 公交站查询（经过的线路） | `/amap busstop 人民广场 上海` |
 | `/amap help` | 显示帮助 | `/amap help` |
 
 ### 路线规划方式
@@ -24,12 +25,13 @@
 
 ### LLM 工具
 
-插件注册了 4 个 LLM 工具，AI 可主动调用：
+插件注册了 5 个 LLM 工具，AI 可主动调用：
 
 - `amap_weather` — 查询天气
 - `amap_route` — 路线规划
 - `amap_geocode` — 地理编码
 - `amap_bus_line` — 公交线路查询
+- `amap_bus_stop` — 公交站查询
 
 ## 配置
 

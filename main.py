@@ -205,6 +205,9 @@ class AmapPlugin(Star):
         elif subcommand in ("bus", "公交", "b"):
             async for result in self._cmd_bus(event, argument):
                 yield result
+        elif subcommand in ("busstop", "公交站", "站台", "bs"):
+            async for result in self._cmd_busstop(event, argument):
+                yield result
         else:
             yield event.plain_result(
                 f"❌ 未知子命令: {subcommand}\n\n"
@@ -213,7 +216,8 @@ class AmapPlugin(Star):
                 "  /amap geo <地址>       地理编码\n"
                 "  /amap regeo <经度,纬度> 逆地理编码\n"
                 "  /amap route <方式> <起点> <终点>  路线规划\n"
-                "  /amap bus <线路名> [城市] 查询公交\n"
+                "  /amap bus <线路名> [城市] 查询公交线路\n"
+                "  /amap busstop <站名> [城市] 查询公交站\n"
                 "  /amap help             显示帮助"
             )
 
@@ -227,7 +231,8 @@ class AmapPlugin(Star):
             "  /amap geo <地址>            地址 → 经纬度\n"
             "  /amap regeo <经度,纬度>     经纬度 → 地址\n"
             "  /amap route <方式> <起点> <终点>  路线规划\n"
-            "  /amap bus <线路名> [城市]   查询公交线路\n\n"
+            "  /amap bus <线路名> [城市]   查询公交线路\n"
+            "  /amap busstop <站名> [城市] 查询公交站（经过的线路）\n\n"
             "路线方式: drive/驾车, walk/步行, bike/骑行, transit/公交\n\n"
             "示例:\n"
             "  /amap weather 上海\n"
@@ -235,7 +240,8 @@ class AmapPlugin(Star):
             "  /amap regeo 116.481481,39.990464\n"
             "  /amap route drive 北京天安门 北京故宫\n"
             "  /amap route transit 人民广场 陆家嘴\n"
-            "  /amap bus 451路 上海"
+            "  /amap bus 451路 上海\n"
+            "  /amap busstop 人民广场 上海"
         )
 
     # ─── 天气查询 ─────────────────────────────────────────
@@ -693,6 +699,67 @@ class AmapPlugin(Star):
 
         yield event.plain_result("\n".join(lines))
 
+    # ─── 公交站查询 ───────────────────────────────────────
+
+    async def _cmd_busstop(self, event: AstrMessageEvent, args: str):
+        """查询公交站点信息（经过该站的线路）
+
+        格式: /amap busstop <站名> [城市]
+        """
+        if not args:
+            yield event.plain_result(
+                "❌ 请输入公交站名，如: /amap busstop 人民广场 上海"
+            )
+            return
+
+        parts = args.split(None, 1)
+        stop_name = parts[0]
+        city_input = parts[1] if len(parts) > 1 else self._default_city_name
+        city = _resolve_adcode(city_input, self._default_city)
+
+        api = self._get_api()
+        try:
+            data = await api.bus_stop_by_name(stop_name, city)
+        except AmapApiError as e:
+            yield event.plain_result(f"❌ 公交站查询失败: {e}")
+            return
+
+        busstops = data.get("busstops", [])
+        if not busstops:
+            yield event.plain_result(f"未找到公交站: {stop_name}")
+            return
+
+        lines: list[str] = [f"🚏 公交站: {stop_name}", ""]
+
+        for i, stop in enumerate(busstops[:5], 1):
+            name = stop.get("name", "")
+            location = stop.get("location", "")
+            buslines = stop.get("buslines", [])
+
+            lines.append(f"  [{i}] {name}")
+            if location:
+                lines.append(f"      坐标: {location}")
+
+            if buslines:
+                bl_names = []
+                for bl in buslines[:20]:
+                    bl_name = bl.get("name", "")
+                    start = bl.get("start_stop", "")
+                    end = bl.get("end_stop", "")
+                    if start and end:
+                        bl_names.append(f"{bl_name}({start}→{end})")
+                    else:
+                        bl_names.append(bl_name)
+
+                if len(bl_names) <= 8:
+                    lines.append(f"      经过: {', '.join(bl_names)}")
+                else:
+                    shown = ", ".join(bl_names[:8])
+                    lines.append(f"      经过: {shown} 等{len(bl_names)}条线路")
+            lines.append("")
+
+        yield event.plain_result("\n".join(lines))
+
     # ─── LLM 工具 ─────────────────────────────────────────
 
     @filter.llm_tool(name="amap_weather")
@@ -742,6 +809,20 @@ class AmapPlugin(Star):
         """
         args = f"{line_name} {city}" if city else line_name
         async for result in self._cmd_bus(event, args):
+            yield result
+
+    @filter.llm_tool(name="amap_bus_stop")
+    async def tool_bus_stop(
+        self, event: AstrMessageEvent, stop_name: str, city: str = ""
+    ):
+        """查询公交站点信息，包括经过该站的所有公交线路。用户问某个公交站有哪些车经过时使用。
+
+        Args:
+            stop_name(string): 公交站名称，如"人民广场"
+            city(string): 城市名称，如"上海"
+        """
+        args = f"{stop_name} {city}" if city else stop_name
+        async for result in self._cmd_busstop(event, args):
             yield result
 
     # ─── 生命周期 ─────────────────────────────────────────
